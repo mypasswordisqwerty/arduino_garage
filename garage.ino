@@ -15,6 +15,7 @@ int pins[] = {4,5,6,-1};
 int lightConf = 7;
 Led foreLamp(7);
 Led blinkLight(9);
+Led foreLight(8);
 LedGroup lamps(pins);
 EasyButton light(0);
 EasyButton fore(1);
@@ -33,6 +34,7 @@ void foreSwitch(){
     foreMode = gate.isReleased() ? MODE_BLINK : MODE_OFF;
   }
   foreLamp.set(foreMode!=MODE_OFF);
+  foreLight.set(foreMode==MODE_OFF);
 }
 
 void lightSwitch(){
@@ -49,6 +51,7 @@ void lightSwitch(){
     lightMode = gate.isReleased() || door.isReleased() ? MODE_BLINK : MODE_OFF;
   }
   lamps.setState(lightMode==MODE_OFF ? 0 : lightConf);
+  blinkLight.set(lightMode==MODE_OFF)
 }
 
 void confChange() {
@@ -72,6 +75,7 @@ void setup() {
   // put your setup code here, to run once:
   EEPROM.get(0, lightConf);
   blinkLight.on();
+  foreLight.on();
   fore.onPressed(foreSwitch);
   light.onPressed(lightSwitch);
   light.onPressedFor(PRESS_TIME, confChange);
@@ -84,26 +88,29 @@ void setup() {
 void checkDoors(){
   if (gate.isReleased() || door.isReleased()){
     if (lightMode==MODE_OFF){
-      lamps.setState(lightConf);
       lightMode = MODE_BLINK;
+      lamps.setState(lightConf);
     }
     if (foreMode==MODE_OFF && gate.isReleased()){
-      foreLamp.on();
       foreMode = MODE_BLINK;
+      foreLamp.on();
     }
     if (foreMode==MODE_BLINK && !gate.isReleased()){
-      foreLamp.off();
       foreMode = MODE_OFF;
+      foreLamp.off();
+      foreLight.on();
     }
     return;
   }
   if (lightMode==MODE_BLINK){
-    lamps.setState(0);
     lightMode = MODE_OFF;
+    lamps.setState(0);
+    blinkLight.on();
   }
   if (foreMode==MODE_BLINK){
-    foreLamp.off();
     foreMode = MODE_OFF;
+    foreLamp.off();
+    foreLight.on();
   }
 }
 
@@ -117,11 +124,12 @@ void loop() {
   if (lightMode==MODE_BLINK || foreMode==MODE_BLINK){
      blinkDelay-=LOOP_DELAY;
      if (blinkDelay<=0){
+        if (foreMode==MODE_BLINK){
+          foreLight.change();
+        }
         blinkLight.change();
         blinkDelay = BLINK_TIME;
      }
-  }else{
-    blinkLight.on();
   }
   if (configDelay>0 && lightConfig>0){
     configDelay-=LOOP_DELAY;
